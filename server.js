@@ -1,4 +1,21 @@
 import express from "express";
+import bcrypt from "bcrypt";
+import Database from "better-sqlite3";
+const db = new Database("database.db");
+db.pragma("journal_mode = WAL");
+//database setup here schema
+const createTable = db.transaction(() => {
+  db.prepare(
+    `
+        CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username STRING NOT NULL UNIQUE,
+        password STRING NOT NULL
+        )
+        `
+  ).run();
+});
+createTable();
 
 const app = express();
 // Middleware
@@ -43,9 +60,24 @@ app.post("/register", (req, res) => {
   }
   if (errors.length) {
     return res.render("homepage", { errors });
-  } else {
-    res.send("Registered");
   }
+
+  // save new user into database
+  const salt = bcrypt.genSaltSync(10);
+  req.body.password = bcrypt.hashSync(req.body.password, salt);
+  const statement = db.prepare(
+    "INSERT INTO users (username, password) VALUES (?, ?)"
+  );
+  statement.run(req.body.username, req.body.password);
+
+  // log the user in by giving them a cookie
+  res.cookie("ourSimpleApp", "supertopsecretvalue", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 1000 * 60 * 60 * 24 * 14,
+  });
+  res.send("Registered");
 });
 
 app.listen(3000);
