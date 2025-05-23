@@ -52,6 +52,7 @@ app.get("/login", (req, res) => {
   res.render("login");
 });
 app.get("/logout", (req, res) => {
+  // clear cookies and redirect to home page
   res.clearCookie("ourSimpleApp");
   res.redirect("/");
 });
